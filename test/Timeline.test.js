@@ -65,4 +65,50 @@ describe("Timeline", () => {
     assert(selectedIds.length === 1);
     assert(dataSet.get(selectedIds[0]).fooid === 2);
   });
+
+  it("should position inner-stacked subgroups with a custom order when items come into view", function () {
+    const start = new Date(2024, 0, 1);
+    const end = new Date(2024, 0, 2);
+    const groups = new DataSet([
+      {
+        id: "g",
+        content: "G",
+        subgroupStack: true,
+        subgroupOrder: "subgroupOrder",
+      },
+    ]);
+    const items = new DataSet(
+      ["a", "b", "c"].map((subgroup, index) => ({
+        id: subgroup,
+        group: "g",
+        subgroup,
+        subgroupOrder: index,
+        start,
+        end,
+      })),
+    );
+    // the items are out of range on the first draw
+    const timeline = new Timeline(
+      document.createElement("div"),
+      items,
+      groups,
+      {
+        start: new Date(2023, 0, 1),
+        end: new Date(2023, 0, 2),
+        stack: true,
+        stackSubgroups: true,
+        order: (a, b) => a.id.localeCompare(b.id),
+      },
+    );
+    // jsdom has no layout, Core.redraw bails while the root has no width
+    Object.defineProperty(timeline.dom.root, "offsetWidth", { value: 800 });
+    timeline.redraw();
+
+    timeline.setWindow(start, end, { animation: false });
+    timeline.redraw();
+
+    const subgroups = timeline.itemSet.groups.g.subgroups;
+    assert(subgroups.a.top < subgroups.b.top);
+    assert(subgroups.b.top < subgroups.c.top);
+  });
 });
